@@ -1239,34 +1239,44 @@ function buildGameData(tokens) {
 async function loadCollection() {
   toast('Loading data...');
   
-  if (USE_API) {
-    // Load from our backend API
-    try {
+  // Always try API first
+  try {
+    const healthCheck = await fetch(window.location.origin + '/api/health');
+    if (healthCheck.ok) {
+      // API is online — load everything from backend
       const stats = await MantyAPI.getStats();
-      document.getElementById('h-alive').innerText = stats.alive || 0;
-      document.getElementById('h-dead').innerText = stats.dead || 0;
-      document.getElementById('h-danger').innerText = stats.weak || 0;
-      const rsEl=document.getElementById('ranks-standing');
-      if(rsEl) rsEl.innerHTML='<span class="live-dot"></span> '+(stats.alive||0)+' Manthys';
-      const mcEl=document.getElementById('museum-count');
-      if(mcEl) mcEl.innerText=(stats.dead||0)+' Exhibits';
-
-      // Load garden (all staked NFTs)
+      updateHomeStats(stats);
       await loadGardenFromAPI();
-      // Load museum
       await loadMuseumFromAPI();
-      // Load leaderboard
       renderLB();
       toast('Data loaded ✅');
-    } catch(e) {
-      console.error('API load error:', e);
-      toast('Server offline — loading demo data');
-      await loadCollectionFromStargaze();
+      return;
     }
-  } else {
-    await loadCollectionFromStargaze();
+  } catch(e) {
+    console.log('API offline, falling back to Stargaze');
   }
+  
+  // Fallback: load from Stargaze (demo mode)
+  await loadCollectionFromStargaze();
 }
+
+function updateHomeStats(stats) {
+  document.getElementById('h-alive').innerText = stats.alive || 0;
+  document.getElementById('h-dead').innerText = stats.dead || 0;
+  document.getElementById('h-danger').innerText = stats.weak || 0;
+  const rsEl = document.getElementById('ranks-standing');
+  if(rsEl) rsEl.innerHTML = '<span class="live-dot"></span> ' + (stats.alive||0) + ' Manthys';
+  const mcEl = document.getElementById('museum-count');
+  if(mcEl) mcEl.innerText = (stats.dead||0) + ' Exhibits';
+}
+
+// Refresh stats from API every 30 seconds
+setInterval(async () => {
+  try {
+    const stats = await MantyAPI.getStats();
+    updateHomeStats(stats);
+  } catch(e) {}
+}, 30000);
 
 async function loadGardenFromAPI(page=1) {
   const limit = 20;
@@ -1522,6 +1532,13 @@ function renderArena(filter='all', page=1){
   const pageData = arenaFilteredData.slice(start, start + ARENA_PER_PAGE);
 
   document.getElementById('arena-cnt').innerHTML='<span class="live-dot"></span> '+arenaFilteredData.length+' Manthys In Garden';
+  
+  if(pageData.length === 0){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--tm);font-family:\'Space Mono\',monospace;font-size:14px;">No NFTs in the garden yet. Stake your NFTs to start playing!</div>';
+    renderPagination('arena-pagination', 1, 1, function(){});
+    return;
+  }
+  
   grid.innerHTML=pageData.map(n=>{
     const cls=n.hp===50?'dn':n.hp===80?'wn':'';
     const hcol=n.hp===100?'var(--gb)':n.hp===80?'var(--amber)':'var(--danger)';
@@ -1559,6 +1576,12 @@ function renderMuseum(page=1){
   const totalPages = Math.ceil(museumData.length / MUSEUM_PER_PAGE);
   const start = (page-1) * MUSEUM_PER_PAGE;
   const pageData = museumData.slice(start, start + MUSEUM_PER_PAGE);
+
+  if(pageData.length === 0){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:3rem;color:rgba(200,160,60,.5);font-family:\'Space Mono\',monospace;font-size:14px;">No exhibits yet. The museum is empty — for now.</div>';
+    renderPagination('museum-pagination', 1, 1, function(){});
+    return;
+  }
 
   grid.innerHTML=pageData.map((n,i)=>{
     const globalIdx = start + i;
@@ -1636,6 +1659,11 @@ function renderLB(sortBy){
   else sorted=[...arenaData].sort((a,b)=>b.hp!==a.hp?b.hp-a.hp:b.days-a.days);
 
   // Podium — top 3
+  if(sorted.length === 0){
+    document.getElementById('podium').innerHTML='<div style="text-align:center;padding:2rem;color:var(--tm);font-family:\'Space Mono\',monospace;font-size:14px;width:100%;">No players yet. Stake your NFTs to join!</div>';
+    document.getElementById('lb-table').innerHTML='';
+    return;
+  }
   const top3=sorted.slice(0,3);
   const podiumOrder=[top3[1],top3[0],top3[2]]; // 2nd, 1st, 3rd
   const podiumClasses=['p-2nd','p-1st','p-3rd'];
