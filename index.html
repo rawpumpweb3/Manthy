@@ -27,6 +27,7 @@
 <link rel="canonical" href="https://manthy.wtf">
 <link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&family=Inter:wght@400;600;700;900&family=VT323&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script src="api.js"></script>
 <style>
 :root {
   --bg:#080e08;--bg2:#0c140c;--bg3:#111a11;
@@ -1065,47 +1066,18 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
 <script>
 // ===== STATE =====
 let wallet = null, pendingPage = null;
-let mthyBal = 1240;
+let mthyBal = 0;
 const COLLECTION_ADDR = 'stars1sxcf8dghtq9qprulmfy4f898d0rn0xzmhle83rqmtpm00j0smhes93wsys';
 const STARGAZE_GQL = 'https://graphql.mainnet.stargaze-apis.com/graphql';
 const CHAIN_ID = 'cosmoshub-4';
-
-// Convert cosmos1 address to stars1 for Stargaze API (migration period)
-function cosmosToStars(addr){
-  if(!addr||!addr.startsWith('cosmos1')) return addr;
-  // Bech32 re-encode: same data, different prefix
-  const CHARSET='qpzry9x8gf2tvdw0s3jn54khce6mua7l';
-  function bech32Decode(str){
-    const sep=str.lastIndexOf('1');
-    const hrp=str.slice(0,sep);
-    const data=[];
-    for(let i=sep+1;i<str.length;i++){const v=CHARSET.indexOf(str[i]);if(v===-1)throw new Error('bad');data.push(v);}
-    return{hrp,data};
-  }
-  function polymod(values){
-    const GEN=[0x3b6a57b2,0x26508e6d,0x1ea119fa,0x3d4233dd,0x2a1462b3];
-    let chk=1;
-    for(const v of values){const b=chk>>25;chk=((chk&0x1ffffff)<<5)^v;for(let i=0;i<5;i++)if((b>>i)&1)chk^=GEN[i];}
-    return chk;
-  }
-  function hrpExpand(h){const r=[];for(let i=0;i<h.length;i++)r.push(h.charCodeAt(i)>>5);r.push(0);for(let i=0;i<h.length;i++)r.push(h.charCodeAt(i)&31);return r;}
-  function createChecksum(h,d){const v=hrpExpand(h).concat(d).concat([0,0,0,0,0,0]);const mod=polymod(v)^1;const r=[];for(let p=0;p<6;p++)r.push((mod>>(5*(5-p)))&31);return r;}
-  function bech32Encode(hrp,data){const combined=data.concat(createChecksum(hrp,data));let ret=hrp+'1';for(const v of combined)ret+=CHARSET[v];return ret;}
-  try{
-    const decoded=bech32Decode(addr);
-    const dataNoChecksum=decoded.data.slice(0,-6);
-    return bech32Encode('stars',dataNoChecksum);
-  }catch(e){return addr;}
-}
+const USE_API = (typeof MantyAPI !== 'undefined'); // true when server is running
 
 const NICKS  = ['Deaf','Curly','Slimy','Loner','Flirty','Chubby','Grumpy','Frizzy','Stumpy','Snarky','Thrifty','Plain','Slowpoke','Handsome','Flashy','Corny','Lazy','Moody','Nosy','Smarty'];
-const OWNERS_SHORT = ['cosmo...vcuu','cosmo...cvlg','cosmo...ntge','cosmo...vhc2','cosmo...0a4a','cosmo...g04s'];
 
 let arenaData = [];
 let museumData = [];
 let walletNFTs = [];
 let stakedNFTs = [];
-let selectedWallet = null;
 let allCollectionNFTs = [];
 
 // ===== STARGAZE GraphQL FETCH =====
@@ -1169,6 +1141,51 @@ async function fetchTokensByOwnerDirect(ownerAddr, limit=30, offset=0) {
   }
 }
 
+// Fetch all wallet NFTs from Stargaze — tries multiple address formats
+async function fetchWalletNFTs(addr) {
+  let userTokens = [];
+  // Stargaze API still uses stars1 addresses during migration
+  const addrsToTry = [addr];
+  // Simple bech32 re-prefix for cosmos1 -> stars1
+  if(addr.startsWith('cosmos1')){
+    try{
+      const CHARSET='qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+      const sep=addr.lastIndexOf('1');
+      const data=[];for(let i=sep+1;i<addr.length;i++){data.push(CHARSET.indexOf(addr[i]));}
+      const dataNoCS=data.slice(0,-6);
+      function polymod(v){const G=[0x3b6a57b2,0x26508e6d,0x1ea119fa,0x3d4233dd,0x2a1462b3];let c=1;for(const x of v){const b=c>>25;c=((c&0x1ffffff)<<5)^x;for(let i=0;i<5;i++)if((b>>i)&1)c^=G[i];}return c;}
+      function hrpE(h){const r=[];for(let i=0;i<h.length;i++)r.push(h.charCodeAt(i)>>5);r.push(0);for(let i=0;i<h.length;i++)r.push(h.charCodeAt(i)&31);return r;}
+      const vals=hrpE('stars').concat(dataNoCS).concat([0,0,0,0,0,0]);
+      const mod=polymod(vals)^1;
+      const cs=[];for(let p=0;p<6;p++)cs.push((mod>>(5*(5-p)))&31);
+      let s='stars1';for(const v of dataNoCS.concat(cs))s+=CHARSET[v];
+      addrsToTry.push(s);
+    }catch(e){}
+  }
+  for(const tryAddr of addrsToTry){
+    const testResult = await fetchTokensByOwnerDirect(tryAddr, 5, 0);
+    const testTotal = testResult.pageInfo?.total || 0;
+    if(testTotal > 0 && testTotal < 500){
+      let offset=0;
+      while(true){
+        const result = await fetchTokensByOwnerDirect(tryAddr, 30, offset);
+        const batch = result.tokens || [];
+        userTokens = userTokens.concat(batch);
+        if(batch.length < 30 || userTokens.length >= (result.pageInfo?.total || 0)) break;
+        offset += batch.length;
+      }
+      break;
+    }
+  }
+  return userTokens.map((t, i) => ({
+    id: parseInt(t.tokenId) || (1000+i),
+    tokenId: t.tokenId,
+    name: t.name || `Seals #${t.tokenId}`,
+    imageUrl: t.imageUrl || '',
+    traits: t.traits || []
+  }));
+}
+
 function nftImageHtml(nft, size) {
   let url = nft.imageUrl || nft.image || '';
   // Replace blocked Stargaze IPFS gateway with public gateway
@@ -1220,16 +1237,81 @@ function buildGameData(tokens) {
 
 // ===== LOAD COLLECTION ON PAGE LOAD =====
 async function loadCollection() {
-  toast('Loading NFTs from Stargaze...');
+  toast('Loading data...');
+  
+  if (USE_API) {
+    // Load from our backend API
+    try {
+      const stats = await MantyAPI.getStats();
+      document.getElementById('h-alive').innerText = stats.alive || 0;
+      document.getElementById('h-dead').innerText = stats.dead || 0;
+      document.getElementById('h-danger').innerText = stats.weak || 0;
+      const rsEl=document.getElementById('ranks-standing');
+      if(rsEl) rsEl.innerHTML='<span class="live-dot"></span> '+(stats.alive||0)+' Manthys';
+      const mcEl=document.getElementById('museum-count');
+      if(mcEl) mcEl.innerText=(stats.dead||0)+' Exhibits';
+
+      // Load garden (all staked NFTs)
+      await loadGardenFromAPI();
+      // Load museum
+      await loadMuseumFromAPI();
+      // Load leaderboard
+      renderLB();
+      toast('Data loaded ✅');
+    } catch(e) {
+      console.error('API load error:', e);
+      toast('Server offline — loading demo data');
+      await loadCollectionFromStargaze();
+    }
+  } else {
+    await loadCollectionFromStargaze();
+  }
+}
+
+async function loadGardenFromAPI(page=1) {
+  const limit = 20;
+  const offset = (page-1)*limit;
+  const data = await MantyAPI.getAllStaked(limit, offset);
+  arenaData = (data.staked||[]).map((n,i) => ({
+    id: n.id,
+    tokenId: n.token_id,
+    name: n.name || 'Seals #'+n.token_id,
+    nick: NICKS[i%NICKS.length],
+    imageUrl: n.image_url || '',
+    hp: n.hp,
+    owner: n.wallet ? n.wallet.slice(0,8)+'...'+n.wallet.slice(-4) : '',
+    ownerFull: n.wallet,
+    days: Math.floor((Date.now() - new Date(n.staked_at+'Z').getTime())/(86400000)),
+    stakedAt: n.staked_at
+  }));
+  renderArena('all', page);
+}
+
+async function loadMuseumFromAPI(page=1) {
+  const limit = 20;
+  const offset = (page-1)*limit;
+  const data = await MantyAPI.getMuseum(limit, offset);
+  museumData = (data.exhibits||[]).map((n,i) => ({
+    id: n.id,
+    tokenId: n.token_id,
+    name: n.name || 'Seals #'+n.token_id,
+    nick: NICKS[i%NICKS.length],
+    imageUrl: n.image_url || '',
+    reason: n.reason || 'Caught',
+    day: n.caught_at ? new Date(n.caught_at+'Z').toLocaleDateString() : 'Unknown'
+  }));
+  renderMuseum(page);
+}
+
+async function loadCollectionFromStargaze() {
+  toast('Loading from Stargaze...');
   let allTokens = [];
   let offset = 0;
   const limit = 30;
-  // Fetch first batch
   const first = await fetchCollectionTokens(limit, 0);
   allTokens = first.tokens || [];
   const total = first.pageInfo?.total || allTokens.length;
   offset = allTokens.length;
-  // Fetch remaining
   while (offset < total && offset < 200) {
     const batch = await fetchCollectionTokens(limit, offset);
     if (!batch.tokens || batch.tokens.length === 0) break;
@@ -1240,7 +1322,6 @@ async function loadCollection() {
   renderArena();
   renderMuseum();
   renderLB();
-  // Update stats
   document.getElementById('h-alive').innerText = arenaData.length;
   document.getElementById('h-dead').innerText = museumData.length;
   document.getElementById('h-danger').innerText = arenaData.filter(n=>n.hp<=80).length;
@@ -1248,7 +1329,7 @@ async function loadCollection() {
   if(rsEl) rsEl.innerHTML='<span class="live-dot"></span> '+arenaData.length+' Manthys';
   const mcEl=document.getElementById('museum-count');
   if(mcEl) mcEl.innerText=museumData.length+' Exhibits';
-  toast('Loaded ' + allTokens.length + ' NFTs from Seals ✅');
+  toast('Loaded ' + allTokens.length + ' NFTs ✅');
 }
 
 // ===== MARQUEE =====
@@ -1328,38 +1409,36 @@ async function onConnected(addr){
   document.getElementById('balbox').style.display='flex';
   toast('Wallet connected!\n'+s+' ✅');
 
-  // Fetch user's NFTs from this collection
-  toast('Loading your NFTs...');
-  let userTokens = [];
-  let uOffset = 0;
-  // Try with cosmos1 address first, then stars1 converted
-  const addrsToTry = [addr, cosmosToStars(addr)];
-  for(const tryAddr of addrsToTry){
-    const testResult = await fetchTokensByOwnerDirect(tryAddr, 5, 0);
-    const testTotal = testResult.pageInfo?.total || 0;
-    // If total matches entire collection, the filter didn't work — skip
-    if(testTotal > 0 && testTotal < 500){
-      // Valid filter — fetch all
-      while(true){
-        const result = await fetchTokensByOwnerDirect(tryAddr, 30, uOffset);
-        const batch = result.tokens || [];
-        userTokens = userTokens.concat(batch);
-        if(batch.length < 30 || userTokens.length >= (result.pageInfo?.total || 0)) break;
-        uOffset += batch.length;
-      }
-      break;
-    }
+  if (USE_API) {
+    // Register/login on backend
+    try {
+      const loginData = await MantyAPI.login(addr);
+      mthyBal = Math.floor(loginData.user?.mthy_balance || 0);
+      
+      // Get staked NFTs from backend
+      const stakedData = await MantyAPI.getMyStaked(addr);
+      stakedNFTs = (stakedData.staked||[]).map((n,i) => ({
+        id: n.id,
+        tokenId: n.token_id,
+        name: n.name || 'Seals #'+n.token_id,
+        imageUrl: n.image_url || '',
+        hp: n.hp,
+        days: Math.floor((Date.now()-new Date(n.staked_at+'Z').getTime())/86400000)
+      }));
+    } catch(e) { console.error('API login error:', e); }
   }
-  walletNFTs = userTokens.map((t, i) => ({
-    id: parseInt(t.tokenId) || (1000+i),
-    tokenId: t.tokenId,
-    name: t.name || `Seals #${t.tokenId}`,
-    imageUrl: t.imageUrl || '',
-    traits: t.traits || []
-  }));
-  stakedNFTs = [];
+
+  // Fetch wallet NFTs from Stargaze (to show unstaked ones)
+  toast('Loading your NFTs...');
+  walletNFTs = await fetchWalletNFTs(addr);
+  
+  // Remove already-staked from wallet list
+  const stakedIds = new Set(stakedNFTs.map(n=>n.tokenId));
+  walletNFTs = walletNFTs.filter(n => !stakedIds.has(n.tokenId));
+
   renderStake();
-  toast('Found ' + walletNFTs.length + ' NFTs in your wallet ✅');
+  updateBalUI();
+  toast('Found ' + walletNFTs.length + ' unstaked + ' + stakedNFTs.length + ' staked ✅');
 
   if(pendingPage){showPage(pendingPage);pendingPage=null;}
 }
@@ -1837,48 +1916,60 @@ function switchHonorTab(btn,filter){
   renderStake(filter);
 }
 
-function feedOne(id){
-  if(mthyBal<100){toast('Not enough $MTHY!');return;}
+async function feedOne(id){
   const nft=stakedNFTs.find(n=>n.id===id);
   if(!nft||nft.hp>=100)return;
-  mthyBal-=100;
+  
+  if(USE_API && wallet){
+    try{
+      const r=await MantyAPI.feed(wallet, nft.tokenId);
+      if(r.error){toast(r.error);return;}
+      mthyBal=Math.floor(r.balance||mthyBal-100);
+    }catch(e){toast('Feed failed');return;}
+  } else {
+    if(mthyBal<100){toast('Not enough $MTHY!');return;}
+    mthyBal-=100;
+  }
+  
   nft.hp=100;
   const a=arenaData.find(x=>x.id===id);if(a)a.hp=100;
   renderStake();
+  updateBalUI();
   closeNftModal();
   toast(nft.name+' fed!\nHP 100% ✅');
 }
 
-function stakeById(id){
+async function stakeById(id){
   const idx=walletNFTs.findIndex(n=>n.id===id);
   if(idx<0)return;
-  const nft=walletNFTs.splice(idx,1)[0];
-  stakedNFTs.push({id:nft.id,name:nft.name,emoji:nft.emoji,imageUrl:nft.imageUrl,days:0,hp:100});
+  const nft=walletNFTs[idx];
+  
+  if(USE_API && wallet){
+    try{
+      const r=await MantyAPI.stake(wallet, nft.tokenId, nft.name, nft.imageUrl);
+      if(r.error){toast(r.error);return;}
+    }catch(e){toast('Stake failed');return;}
+  }
+  
+  walletNFTs.splice(idx,1);
+  stakedNFTs.push({id:nft.id,tokenId:nft.tokenId,name:nft.name,imageUrl:nft.imageUrl,days:0,hp:100});
   renderStake();
   closeNftModal();
   toast(nft.name+' staked!\n+80 $MTHY/day ✅');
 }
 
-function stakeAll(){
+async function stakeAll(){
   if(walletNFTs.length===0){toast('No NFTs to stake!');return;}
   const count=walletNFTs.length;
-  while(walletNFTs.length>0){
-    const nft=walletNFTs.splice(0,1)[0];
-    stakedNFTs.push({id:nft.id,name:nft.name,emoji:nft.emoji,imageUrl:nft.imageUrl,days:0,hp:100});
+  for(const nft of [...walletNFTs]){
+    if(USE_API && wallet){
+      try{await MantyAPI.stake(wallet, nft.tokenId, nft.name, nft.imageUrl);}catch(e){}
+    }
+    stakedNFTs.push({id:nft.id,tokenId:nft.tokenId,name:nft.name,imageUrl:nft.imageUrl,days:0,hp:100});
   }
+  walletNFTs=[];
   renderStake();
   toast(count+' NFTs staked!\n+80 $MTHY/day each ✅');
-}
-
-function stakeSelected(){
-  if(!selectedWallet){toast('Select an NFT first!');return;}
-  const idx=walletNFTs.findIndex(n=>n.name===selectedWallet);
-  if(idx<0)return;
-  const nft=walletNFTs.splice(idx,1)[0];
-  stakedNFTs.push({id:nft.id,name:nft.name,emoji:nft.emoji,days:0,hp:100});
-  selectedWallet=null;
-  renderStake();
-  toast(nft.name+' staked!\n+80 $MTHY/day ✅');
 }
 
 // ===== NFT MODAL =====
@@ -1969,37 +2060,68 @@ function openArenaModal(id){
   m.classList.add('show');
 }
 
-function claimReward(){
-  const reward=stakedNFTs.length*80;
-  if(reward<=0){toast('No staked NFTs earning!');return;}
-  mthyBal+=reward;
-  updateBalUI();
-  toast('💰 '+reward+' $MTHY claimed!\nFrom '+stakedNFTs.length+' staked NFTs');
+async function claimReward(){
+  if(stakedNFTs.length<=0){toast('No staked NFTs earning!');return;}
+  
+  if(USE_API && wallet){
+    try{
+      const r=await MantyAPI.claim(wallet);
+      if(r.error){toast(r.error);return;}
+      mthyBal=Math.floor(r.balance||0);
+      claimAccumulator=0;
+      updateBalUI();
+      toast(r.message||'Claimed!');
+    }catch(e){toast('Claim failed');return;}
+  } else {
+    const reward=stakedNFTs.length*80;
+    mthyBal+=reward;
+    updateBalUI();
+    toast(reward+' $MTHY claimed!');
+  }
 }
 
-function feedAllStaked(){
+async function feedAllStaked(){
   const hungry=stakedNFTs.filter(n=>n.hp<100);
   if(hungry.length===0){toast('All Manthy already fed!');return;}
-  const cost=hungry.length*100;
-  if(mthyBal<cost){toast('Not enough $MTHY!\nNeed '+cost+' $MTHY.');return;}
-  mthyBal-=cost;
-  hungry.forEach(n=>{n.hp=100;const a=arenaData.find(x=>x.id===n.id);if(a)a.hp=100;});
-  renderStake();
-  toast(hungry.length+' Manthy fed!\nHP 100% ✅\n-'+cost+' $MTHY');
+  
+  if(USE_API && wallet){
+    try{
+      const r=await MantyAPI.feedAll(wallet);
+      if(r.error){toast(r.error);return;}
+      mthyBal=Math.floor(r.balance||0);
+      hungry.forEach(n=>{n.hp=100;});
+      renderStake();
+      updateBalUI();
+      toast(r.fed+' Manthy fed! ✅');
+    }catch(e){toast('Feed failed');return;}
+  } else {
+    const cost=hungry.length*100;
+    if(mthyBal<cost){toast('Not enough $MTHY!\nNeed '+cost);return;}
+    mthyBal-=cost;
+    hungry.forEach(n=>{n.hp=100;const a=arenaData.find(x=>x.id===n.id);if(a)a.hp=100;});
+    renderStake();
+    toast(hungry.length+' Manthy fed! ✅');
+  }
 }
 
-function feedAll(){
-  feedAllStaked();
-}
+function feedAll(){feedAllStaked();}
 
 // ===== CATCH =====
-function catchManthy(id){
+async function catchManthy(id){
   const idx=arenaData.findIndex(n=>n.id===id);
   if(idx<0)return;
   const n=arenaData[idx];
   if(n.hp>50){toast('HP too high to catch!');return;}
+  
+  if(USE_API && wallet){
+    try{
+      const r=await MantyAPI.catchNft(wallet, n.tokenId);
+      if(r.error){toast(r.error);return;}
+    }catch(e){toast('Catch failed');return;}
+  }
+  
   const caught=arenaData.splice(idx,1)[0];
-  museumData.unshift({id:caught.id,name:caught.name,nick:caught.nick,emoji:caught.emoji,imageUrl:caught.imageUrl,reason:'Caught in the garden',day:'Today'});
+  museumData.unshift({id:caught.id,name:caught.name,nick:caught.nick,imageUrl:caught.imageUrl,reason:'Caught in the garden',day:'Today'});
   renderArena(document.querySelector('.fb.active')?.dataset?.filter||'all', arenaPage);
   renderMuseum();
   document.getElementById('h-dead').innerText=museumData.length;

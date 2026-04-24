@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MANTHY Admin Panel</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#080e08;color:#d0e8d0;font-family:'Courier New',monospace;padding:2rem;}
+h1{color:#76ff03;margin-bottom:1rem;font-size:20px;letter-spacing:2px;}
+h2{color:#4caf50;margin:1.5rem 0 .8rem;font-size:16px;border-bottom:1px solid #1a2a1a;padding-bottom:6px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;}
+.card{background:#0c140c;border:1px solid #1a2a1a;padding:1.2rem;}
+.card h3{color:#76ff03;font-size:13px;margin-bottom:.8rem;letter-spacing:1px;}
+.stat{font-size:28px;color:#76ff03;font-weight:bold;}
+.stat-label{font-size:11px;color:#4caf50;margin-top:4px;}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:.5rem;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #1a2a1a;}
+th{color:#76ff03;font-size:11px;letter-spacing:1px;text-transform:uppercase;}
+td{color:#81c784;}
+tr:hover{background:rgba(118,255,3,.03);}
+input,select{background:#111a11;border:1px solid #2d7a2d;color:#d0e8d0;padding:8px 12px;font-family:inherit;font-size:12px;width:100%;}
+input:focus,select:focus{outline:none;border-color:#76ff03;}
+button{background:#76ff03;color:#080e08;border:none;padding:8px 16px;font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;letter-spacing:1px;margin-top:8px;}
+button:hover{background:#a0ff40;}
+button.danger{background:#f44336;color:#fff;}
+button.danger:hover{background:#ff5252;}
+.form-row{display:flex;gap:8px;margin-bottom:8px;align-items:flex-end;}
+.form-row>div{flex:1;}
+.form-row label{display:block;font-size:10px;color:#4caf50;margin-bottom:4px;letter-spacing:1px;}
+.log{background:#0a0e0a;border:1px solid #1a2a1a;padding:10px;font-size:11px;max-height:200px;overflow-y:auto;margin-top:8px;white-space:pre-wrap;color:#4caf50;}
+.badge{display:inline-block;padding:2px 8px;font-size:10px;font-weight:bold;letter-spacing:1px;}
+.badge-green{background:rgba(118,255,3,.15);color:#76ff03;border:1px solid rgba(118,255,3,.3);}
+.badge-red{background:rgba(255,23,68,.15);color:#f44336;border:1px solid rgba(255,23,68,.3);}
+.badge-amber{background:rgba(255,179,0,.15);color:#ffb300;border:1px solid rgba(255,179,0,.3);}
+#toast{position:fixed;bottom:20px;right:20px;background:#0c140c;border:1px solid #76ff03;color:#76ff03;padding:12px 18px;font-size:12px;display:none;z-index:999;max-width:300px;}
+</style>
+</head>
+<body>
+<h1>⚙️ MANTHY ADMIN PANEL</h1>
+<div id="toast"></div>
+
+<!-- STATS -->
+<div class="grid">
+  <div class="card"><h3>GAME STATS</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;text-align:center;">
+      <div><div class="stat" id="s-alive">0</div><div class="stat-label">ALIVE</div></div>
+      <div><div class="stat" id="s-weak" style="color:#ffb300">0</div><div class="stat-label">WEAK</div></div>
+      <div><div class="stat" id="s-dead" style="color:#f44336">0</div><div class="stat-label">MUSEUM</div></div>
+      <div><div class="stat" id="s-survivors" style="color:#ffb300">20</div><div class="stat-label">WIN SLOTS</div></div>
+    </div>
+  </div>
+  <div class="card"><h3>SERVER</h3>
+    <div id="server-status">Checking...</div>
+    <div style="margin-top:8px;font-size:11px;color:#4caf50;" id="server-info"></div>
+  </div>
+</div>
+
+<!-- USERS -->
+<h2>USERS</h2>
+<table id="users-table">
+  <thead><tr><th>Wallet</th><th>$MTHY Balance</th><th>Joined</th><th>Last Seen</th></tr></thead>
+  <tbody id="users-body"></tbody>
+</table>
+
+<!-- STAKED NFTs -->
+<h2>STAKED NFTs (GARDEN)</h2>
+<table id="staked-table">
+  <thead><tr><th>Token</th><th>Name</th><th>Owner</th><th>HP</th><th>Staked</th><th>Last Fed</th><th>Actions</th></tr></thead>
+  <tbody id="staked-body"></tbody>
+</table>
+
+<!-- MUSEUM -->
+<h2>MUSEUM</h2>
+<table id="museum-table">
+  <thead><tr><th>Token</th><th>Name</th><th>Original Owner</th><th>Caught By</th><th>Reason</th><th>Date</th></tr></thead>
+  <tbody id="museum-body"></tbody>
+</table>
+
+<!-- MANUAL ACTIONS -->
+<h2>MANUAL ACTIONS</h2>
+<div class="grid">
+  <div class="card">
+    <h3>ADD $MTHY TO USER</h3>
+    <div class="form-row">
+      <div><label>WALLET</label><input id="add-wallet" placeholder="cosmos1..."></div>
+      <div><label>AMOUNT</label><input id="add-amount" type="number" value="1000"></div>
+    </div>
+    <button onclick="addMthy()">ADD $MTHY</button>
+  </div>
+  <div class="card">
+    <h3>FORCE CATCH NFT</h3>
+    <div class="form-row">
+      <div><label>TOKEN ID</label><input id="catch-token" placeholder="769"></div>
+    </div>
+    <button class="danger" onclick="forceCatch()">FORCE CATCH</button>
+  </div>
+</div>
+
+<div class="card" style="margin-top:1rem;">
+  <h3>GAME CONFIG</h3>
+  <div class="form-row">
+    <div><label>EARN RATE/DAY</label><input id="cfg-earn" type="number" value="80"></div>
+    <div><label>FEED COST</label><input id="cfg-feed" type="number" value="100"></div>
+    <div><label>MUSEUM EARN</label><input id="cfg-museum" type="number" value="16"></div>
+    <div><label>MAX SURVIVORS</label><input id="cfg-survivors" type="number" value="20"></div>
+  </div>
+  <button onclick="saveConfig()">SAVE CONFIG</button>
+</div>
+
+<!-- LOG -->
+<h2>LOG</h2>
+<div class="log" id="log"></div>
+
+<script>
+const API = window.location.origin + '/api';
+
+function log(msg){
+  const el=document.getElementById('log');
+  el.innerText=new Date().toLocaleTimeString()+' — '+msg+'\n'+el.innerText;
+}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.innerText=msg;t.style.display='block';
+  setTimeout(()=>t.style.display='none',3000);
+}
+
+async function loadStats(){
+  try{
+    const r=await fetch(API+'/leaderboard/stats');
+    const d=await r.json();
+    document.getElementById('s-alive').innerText=d.alive;
+    document.getElementById('s-weak').innerText=d.weak;
+    document.getElementById('s-dead').innerText=d.dead;
+    document.getElementById('s-survivors').innerText=d.survivors;
+    log('Stats loaded');
+  }catch(e){log('Stats error: '+e.message);}
+}
+
+async function loadHealth(){
+  try{
+    const r=await fetch(API+'/health');
+    const d=await r.json();
+    document.getElementById('server-status').innerHTML='<span class="badge badge-green">ONLINE</span>';
+    document.getElementById('server-info').innerText='Last check: '+d.timestamp;
+  }catch(e){
+    document.getElementById('server-status').innerHTML='<span class="badge badge-red">OFFLINE</span>';
+  }
+}
+
+async function loadUsers(){
+  // No direct users list endpoint yet — we'll add one
+  try{
+    const r=await fetch(API+'/admin/users');
+    const d=await r.json();
+    document.getElementById('users-body').innerHTML=d.users.map(u=>`<tr>
+      <td style="font-size:10px">${u.wallet.slice(0,12)}...${u.wallet.slice(-4)}</td>
+      <td>${Math.floor(u.mthy_balance).toLocaleString()}</td>
+      <td>${u.created_at}</td>
+      <td>${u.last_seen}</td>
+    </tr>`).join('');
+  }catch(e){log('Users: '+e.message);}
+}
+
+async function loadStaked(){
+  try{
+    const r=await fetch(API+'/stake/all?limit=100');
+    const d=await r.json();
+    document.getElementById('staked-body').innerHTML=d.staked.map(n=>{
+      const hpBadge=n.hp>=100?'badge-green':n.hp>=80?'badge-amber':'badge-red';
+      return `<tr>
+        <td>#${n.token_id}</td>
+        <td>${n.name}</td>
+        <td style="font-size:10px">${n.wallet.slice(0,8)}...${n.wallet.slice(-4)}</td>
+        <td><span class="badge ${hpBadge}">${n.hp}%</span></td>
+        <td>${n.staked_at}</td>
+        <td>${n.last_fed}</td>
+        <td><button class="danger" style="font-size:10px;padding:4px 8px;margin:0" onclick="forceUnstake('${n.wallet}','${n.token_id}')">REMOVE</button></td>
+      </tr>`;
+    }).join('');
+  }catch(e){log('Staked: '+e.message);}
+}
+
+async function loadMuseum(){
+  try{
+    const r=await fetch(API+'/museum?limit=100');
+    const d=await r.json();
+    document.getElementById('museum-body').innerHTML=d.exhibits.map(n=>`<tr>
+      <td>#${n.token_id}</td>
+      <td>${n.name}</td>
+      <td style="font-size:10px">${(n.original_owner||'').slice(0,8)}...</td>
+      <td style="font-size:10px">${(n.caught_by||'').slice(0,8)}...</td>
+      <td>${n.reason}</td>
+      <td>${n.caught_at}</td>
+    </tr>`).join('');
+  }catch(e){log('Museum: '+e.message);}
+}
+
+async function addMthy(){
+  const wallet=document.getElementById('add-wallet').value;
+  const amount=Number(document.getElementById('add-amount').value);
+  if(!wallet||!amount){toast('Fill all fields');return;}
+  try{
+    const r=await fetch(API+'/admin/add-mthy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet,amount})});
+    const d=await r.json();
+    toast(d.message||'Done');log('Added '+amount+' $MTHY to '+wallet);
+    loadUsers();
+  }catch(e){toast('Error: '+e.message);}
+}
+
+async function forceCatch(){
+  const tokenId=document.getElementById('catch-token').value;
+  if(!tokenId){toast('Enter token ID');return;}
+  try{
+    const r=await fetch(API+'/admin/force-catch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tokenId})});
+    const d=await r.json();
+    toast(d.message||'Done');log('Force caught #'+tokenId);
+    loadAll();
+  }catch(e){toast('Error: '+e.message);}
+}
+
+async function forceUnstake(wallet,tokenId){
+  try{
+    const r=await fetch(API+'/stake/unstake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet,tokenId})});
+    const d=await r.json();
+    toast(d.message||'Removed');log('Unstaked #'+tokenId);
+    loadAll();
+  }catch(e){toast('Error: '+e.message);}
+}
+
+async function saveConfig(){
+  toast('Config saved (frontend only — server config update coming soon)');
+  log('Config save requested');
+}
+
+function loadAll(){
+  loadHealth();
+  loadStats();
+  loadUsers();
+  loadStaked();
+  loadMuseum();
+}
+loadAll();
+setInterval(loadAll, 30000); // Refresh every 30s
+</script>
+</body>
+</html>

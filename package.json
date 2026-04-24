@@ -1,0 +1,12 @@
+{
+  "name": "manthy",
+  "version": "1.0.0",
+  "description": "Manthy NFT Survival Game",
+  "scripts": {
+    "start": "node server/index.js",
+    "install-server": "cd server && npm install"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
