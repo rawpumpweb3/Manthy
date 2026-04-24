@@ -776,7 +776,7 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
     <button class="nb" onclick="showPage('rules')">Rules</button>
     <div class="wallet-combined" id="wcbtn" style="display:none;position:relative;" onclick="toggleDcPopup(event)">
       <span class="waddr" id="waddr"></span>
-      <span class="wallet-bal"><span id="mbal">1.2K</span> $MTHY<span class="bal-tooltip" id="bal-tooltip">1,240 $MTHY</span></span>
+      <span class="wallet-bal"><span id="mbal">0</span> $MTHY<span class="bal-tooltip" id="bal-tooltip">0 $MTHY</span></span>
       <div class="dc-popup" id="dcpopup">
         <button class="dc-popup-btn" onclick="disconnect();event.stopPropagation();">DISCONNECT WALLET</button>
       </div>
@@ -806,9 +806,9 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
   <div class="home-content">
 
   <div class="stats-bar">
-    <div class="sc"><span class="sn" id="h-alive">163</span><span class="sl">Still Alive</span></div>
-    <div class="sc"><span class="sn" style="color:var(--warn)" id="h-danger">18</span><span class="sl">Weak</span></div>
-    <div class="sc"><span class="sn" style="color:var(--danger)" id="h-dead">37</span><span class="sl">In Museum</span></div>
+    <div class="sc"><span class="sn" id="h-alive">0</span><span class="sl">Still Alive</span></div>
+    <div class="sc"><span class="sn" style="color:var(--warn)" id="h-danger">0</span><span class="sl">Weak</span></div>
+    <div class="sc"><span class="sn" style="color:var(--danger)" id="h-dead">0</span><span class="sl">In Museum</span></div>
     <div class="sc"><span class="sn" style="color:var(--amber)">20</span><span class="sl">Win Slots</span></div>
   </div>
 
@@ -862,11 +862,11 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
 <div id="page-stake" class="page">
   <!-- Stats bar -->
   <div class="stake-stats">
-    <div class="stake-stat"><span class="stake-stat-val" id="ss-staked">3</span><span class="stake-stat-label">Staked</span></div>
-    <div class="stake-stat"><span class="stake-stat-val" id="ss-unstaked">3</span><span class="stake-stat-label">In Wallet</span></div>
-    <div class="stake-stat"><span class="stake-stat-val" id="ss-balance">1,240</span><span class="stake-stat-label">$MTHY Balance</span></div>
-    <div class="stake-stat"><span class="stake-stat-val" id="ss-pending" style="color:var(--gn)">+700</span><span class="stake-stat-label">Pending</span></div>
-    <div class="stake-stat"><span class="stake-stat-val" id="ss-earnrate">240</span><span class="stake-stat-label">$MTHY / Day</span></div>
+    <div class="stake-stat"><span class="stake-stat-val" id="ss-staked">0</span><span class="stake-stat-label">Staked</span></div>
+    <div class="stake-stat"><span class="stake-stat-val" id="ss-unstaked">0</span><span class="stake-stat-label">In Wallet</span></div>
+    <div class="stake-stat"><span class="stake-stat-val" id="ss-balance">0</span><span class="stake-stat-label">$MTHY Balance</span></div>
+    <div class="stake-stat"><span class="stake-stat-val" id="ss-pending" style="color:var(--gn)">+0</span><span class="stake-stat-label">Pending</span></div>
+    <div class="stake-stat"><span class="stake-stat-val" id="ss-earnrate">0</span><span class="stake-stat-label">$MTHY / Day</span></div>
   </div>
 
   <!-- Heatmap -->
@@ -1843,35 +1843,25 @@ function animatePodium(){
 // ===== RENDER STAKE =====
 let stakeFilter='all';
 
-// Generate heatmap with date tooltips + red cells for caught + stagger animation
+// Generate heatmap — empty by default, will be populated from API feed history
 (function(){
   const hm=document.getElementById('heatmap');
   if(!hm)return;
   let h='';
   const today=new Date();
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  let totalFeedings=0;
   let cellIdx=0;
   for(let i=363;i>=0;i--){
     const d=new Date(today);
     d.setDate(d.getDate()-i);
     const dateStr=months[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
-    const r=Math.random();
-    let cls='',count=0,label='';
-    if(r>.95){cls='hm-red';count=0;label='<span style="color:var(--danger)">Caught!</span>';}
-    else if(r>.90){cls='hm-4';count=Math.floor(Math.random()*2)+4;}
-    else if(r>.80){cls='hm-3';count=3;}
-    else if(r>.68){cls='hm-2';count=2;}
-    else if(r>.53){cls='hm-1';count=1;}
-    totalFeedings+=count;
-    if(!label) label=count>0?`<span>${count} feeding${count>1?'s':''}</span>`:' No feedings';
     const delay=(cellIdx*0.003).toFixed(3);
-    h+=`<div class="hm-cell ${cls}" style="animation-delay:${delay}s"><div class="hm-tip">${dateStr}<br>${label}</div></div>`;
+    h+=`<div class="hm-cell" style="animation-delay:${delay}s"><div class="hm-tip">${dateStr}<br>No feedings</div></div>`;
     cellIdx++;
   }
   hm.innerHTML=h;
   const cntEl=document.getElementById('hm-count');
-  if(cntEl) cntEl.innerText=totalFeedings.toLocaleString();
+  if(cntEl) cntEl.innerText='0';
 })();
 
 function renderStake(filter){

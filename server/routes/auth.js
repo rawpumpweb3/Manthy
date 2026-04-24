@@ -12,7 +12,7 @@ router.post('/login', (req, res) => {
     return res.json({ user: existing, isNew: false });
   }
 
-  run('INSERT INTO users (wallet, mthy_balance) VALUES (?, ?)', [wallet, 1000]);
+  run('INSERT INTO users (wallet, mthy_balance) VALUES (?, ?)', [wallet, 0]);
   const user = get('SELECT * FROM users WHERE wallet = ?', [wallet]);
   res.json({ user, isNew: true });
 });
