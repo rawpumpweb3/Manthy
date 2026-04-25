@@ -67,31 +67,40 @@ function cosmosToStars(cosmosAddr) {
   return bech32Encode('stars', bytes);
 }
 
-// Verify NFT ownership via Stargaze GraphQL
+const COSMOS_REST = 'https://rest.cosmos.directory/cosmoshub';
+const COSMOS_CONTRACT = 'cosmos1ptcdmtejupzy4nj5jx5mld9fvn98psk096mdrn820j7dj3xdmu6sy3vr7a';
+
+// Verify NFT ownership via Cosmos Hub REST API (primary) + Stargaze GraphQL (fallback)
 async function verifyOwnership(wallet, tokenId) {
-  const starsAddr = cosmosToStars(wallet);
-  const query = `{
-    token(collectionAddr:"${COLLECTION_ADDR}", tokenId:"${tokenId}") {
-      owner { address }
-    }
-  }`;
+  // Method 1: Cosmos Hub REST API (most accurate post-migration)
   try {
+    const query = Buffer.from(JSON.stringify({owner_of:{token_id:tokenId}})).toString('base64');
+    const resp = await fetch(`${COSMOS_REST}/cosmwasm/wasm/v1/contract/${COSMOS_CONTRACT}/smart/${query}`);
+    if (resp.ok) {
+      const data = await resp.json();
+      const owner = data?.data?.owner;
+      if (owner === wallet) return { verified: true };
+      if (owner) return { verified: false, reason: `NFT owned by ${owner.slice(0,12)}..., not you` };
+    }
+  } catch(e) {
+    console.warn('[STAKE] Cosmos Hub check failed:', e.message);
+  }
+
+  // Method 2: Stargaze GraphQL fallback
+  try {
+    const starsAddr = cosmosToStars(wallet);
+    const query = `{ token(collectionAddr:"${COLLECTION_ADDR}", tokenId:"${tokenId}") { owner { address } } }`;
     const resp = await fetch('https://graphql.mainnet.stargaze-apis.com/graphql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })
     });
     const data = await resp.json();
     const owner = data?.data?.token?.owner?.address;
-    if (!owner) return { verified: false, reason: 'Token not found on Stargaze' };
-    // Check both cosmos1 and stars1 formats
-    if (owner === starsAddr || owner === wallet) {
-      return { verified: true };
-    }
+    if (!owner) return { verified: false, reason: 'Token not found' };
+    if (owner === starsAddr || owner === wallet) return { verified: true };
     return { verified: false, reason: `NFT owned by ${owner.slice(0,12)}..., not you` };
   } catch (e) {
-    // If API is down, allow stake but log warning
-    console.warn('[STAKE] Ownership check failed, allowing:', e.message);
+    console.warn('[STAKE] All ownership checks failed, allowing:', e.message);
     return { verified: true, warning: 'Ownership check unavailable' };
   }
 }

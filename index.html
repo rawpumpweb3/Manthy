@@ -1080,6 +1080,8 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
 let wallet = null, pendingPage = null;
 let mthyBal = 0;
 const COLLECTION_ADDR = 'stars1sxcf8dghtq9qprulmfy4f898d0rn0xzmhle83rqmtpm00j0smhes93wsys';
+const COLLECTION_ADDR_COSMOS = 'cosmos1ptcdmtejupzy4nj5jx5mld9fvn98psk096mdrn820j7dj3xdmu6sy3vr7a';
+const COSMOS_REST = 'https://rest.cosmos.directory/cosmoshub';
 const STARGAZE_GQL = 'https://graphql.mainnet.stargaze-apis.com/graphql';
 const CHAIN_ID = 'cosmoshub-4';
 const USE_API = (typeof MantyAPI !== 'undefined'); // true when server is running
@@ -1153,12 +1155,38 @@ async function fetchTokensByOwnerDirect(ownerAddr, limit=30, offset=0) {
   }
 }
 
-// Fetch all wallet NFTs from Stargaze — tries multiple address formats
+// Fetch wallet NFTs from Cosmos Hub REST API (accurate post-migration)
 async function fetchWalletNFTs(addr) {
   let userTokens = [];
-  // Stargaze API still uses stars1 addresses during migration
+  
+  // Method 1: Cosmos Hub REST API (most accurate)
+  try {
+    const query = btoa(JSON.stringify({tokens:{owner:addr,limit:30}}));
+    const resp = await fetch(`${COSMOS_REST}/cosmwasm/wasm/v1/contract/${COLLECTION_ADDR_COSMOS}/smart/${query}`);
+    if (resp.ok) {
+      const data = await resp.json();
+      const tokenIds = data?.data?.tokens || [];
+      if (tokenIds.length > 0) {
+        // Fetch metadata for each token from Stargaze GraphQL (has images/names)
+        for (const tokenId of tokenIds) {
+          const meta = await fetchTokenMeta(tokenId);
+          userTokens.push({
+            id: parseInt(tokenId) || 0,
+            tokenId: tokenId,
+            name: meta?.name || `Seals #${tokenId}`,
+            imageUrl: meta?.imageUrl || '',
+            traits: meta?.traits || []
+          });
+        }
+        return userTokens;
+      }
+    }
+  } catch(e) {
+    console.log('Cosmos Hub REST failed, trying Stargaze GraphQL:', e.message);
+  }
+  
+  // Method 2: Fallback to Stargaze GraphQL (may be outdated)
   const addrsToTry = [addr];
-  // Simple bech32 re-prefix for cosmos1 -> stars1
   if(addr.startsWith('cosmos1')){
     try{
       const CHARSET='qpzry9x8gf2tvdw0s3jn54khce6mua7l';
@@ -1198,9 +1226,21 @@ async function fetchWalletNFTs(addr) {
   }));
 }
 
+// Fetch single token metadata from Stargaze GraphQL
+async function fetchTokenMeta(tokenId) {
+  try {
+    const query = `{ token(collectionAddr:"${COLLECTION_ADDR}", tokenId:"${tokenId}") { name imageUrl traits { name value } } }`;
+    const resp = await fetch(STARGAZE_GQL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({query})
+    });
+    const json = await resp.json();
+    return json.data?.token || null;
+  } catch(e) { return null; }
+}
+
 function nftImageHtml(nft, size) {
   let url = nft.imageUrl || nft.image || '';
-  // Replace blocked Stargaze IPFS gateway with public gateway
   if (url.includes('ipfs-gw.stargaze-apis.com/ipfs/')) {
     url = url.replace('https://ipfs-gw.stargaze-apis.com/ipfs/', 'https://dweb.link/ipfs/');
   } else if (url.startsWith('ipfs://')) {
