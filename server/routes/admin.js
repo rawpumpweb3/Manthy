@@ -39,4 +39,22 @@ router.post('/reset', (req, res) => {
   res.json({ success: true, message: 'Game reset' });
 });
 
+// Save game config
+router.post('/config', (req, res) => {
+  const { earn_rate, feed_cost, museum_earn, max_survivors } = req.body;
+  if (earn_rate != null) run("INSERT OR REPLACE INTO game_config (key, value) VALUES ('earn_rate_per_day', ?)", [String(earn_rate)]);
+  if (feed_cost != null) run("INSERT OR REPLACE INTO game_config (key, value) VALUES ('feed_cost', ?)", [String(feed_cost)]);
+  if (museum_earn != null) run("INSERT OR REPLACE INTO game_config (key, value) VALUES ('museum_earn', ?)", [String(museum_earn)]);
+  if (max_survivors != null) run("INSERT OR REPLACE INTO game_config (key, value) VALUES ('max_survivors', ?)", [String(max_survivors)]);
+  res.json({ success: true, message: 'Config saved' });
+});
+
+// Get game config
+router.get('/config', (req, res) => {
+  const rows = all('SELECT * FROM game_config');
+  const config = {};
+  for (const r of rows) config[r.key] = r.value;
+  res.json({ config });
+});
+
 module.exports = router;

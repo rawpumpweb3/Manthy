@@ -6,8 +6,22 @@
 <title>MANTHY Admin Panel</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:#080e08;color:#d0e8d0;font-family:'Courier New',monospace;padding:2rem;}
-h1{color:#76ff03;margin-bottom:1rem;font-size:20px;letter-spacing:2px;}
+body{background:#080e08;color:#d0e8d0;font-family:'Courier New',monospace;min-height:100vh;}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem;}
+.login-box{background:#0c140c;border:1px solid #1a2a1a;padding:2.5rem;width:100%;max-width:360px;text-align:center;}
+.login-box h1{color:#76ff03;font-size:18px;letter-spacing:3px;margin-bottom:6px;}
+.login-box p{color:#4caf50;font-size:11px;margin-bottom:1.5rem;}
+.login-box input{background:#111a11;border:1px solid #2d7a2d;color:#d0e8d0;padding:10px 14px;font-family:inherit;font-size:13px;width:100%;margin-bottom:10px;text-align:center;}
+.login-box input:focus{outline:none;border-color:#76ff03;}
+.login-box button{background:#76ff03;color:#080e08;border:none;padding:10px 24px;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;letter-spacing:2px;width:100%;margin-top:4px;}
+.login-box button:hover{background:#a0ff40;}
+.login-error{color:#f44336;font-size:11px;margin-top:8px;display:none;}
+.panel{display:none;padding:2rem;}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;}
+.topbar h1{margin:0;}
+.topbar button{margin:0;font-size:11px;padding:6px 14px;background:#f44336;color:#fff;letter-spacing:1px;}
+.topbar button:hover{background:#ff5252;}
+h1{color:#76ff03;font-size:20px;letter-spacing:2px;}
 h2{color:#4caf50;margin:1.5rem 0 .8rem;font-size:16px;border-bottom:1px solid #1a2a1a;padding-bottom:6px;}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;}
 .card{background:#0c140c;border:1px solid #1a2a1a;padding:1.2rem;}
@@ -37,10 +51,24 @@ button.danger:hover{background:#ff5252;}
 </style>
 </head>
 <body>
-<h1>⚙️ MANTHY ADMIN PANEL</h1>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="login-screen">
+  <div class="login-box">
+    <h1>⚙️ MANTHY</h1>
+    <p>ADMIN PANEL</p>
+    <input type="text" id="login-id" placeholder="ID" autocomplete="off">
+    <input type="password" id="login-pw" placeholder="PASSWORD" autocomplete="off">
+    <button onclick="doLogin()">LOGIN</button>
+    <div class="login-error" id="login-error">Invalid credentials</div>
+  </div>
+</div>
+
+<!-- PANEL -->
+<div class="panel" id="admin-panel">
+<div class="topbar"><h1>⚙️ MANTHY ADMIN</h1><button onclick="doLogout()">LOGOUT</button></div>
 <div id="toast"></div>
 
-<!-- STATS -->
 <div class="grid">
   <div class="card"><h3>GAME STATS</h3>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;text-align:center;">
@@ -56,40 +84,28 @@ button.danger:hover{background:#ff5252;}
   </div>
 </div>
 
-<!-- USERS -->
 <h2>USERS</h2>
-<table id="users-table">
-  <thead><tr><th>Wallet</th><th>$MTHY Balance</th><th>Joined</th><th>Last Seen</th></tr></thead>
-  <tbody id="users-body"></tbody>
-</table>
+<table><thead><tr><th>Wallet</th><th>$MTHY</th><th>Joined</th><th>Last Seen</th></tr></thead>
+<tbody id="users-body"></tbody></table>
 
-<!-- STAKED NFTs -->
 <h2>STAKED NFTs (GARDEN)</h2>
-<table id="staked-table">
-  <thead><tr><th>Token</th><th>Name</th><th>Owner</th><th>HP</th><th>Staked</th><th>Last Fed</th><th>Actions</th></tr></thead>
-  <tbody id="staked-body"></tbody>
-</table>
+<table><thead><tr><th>Token</th><th>Name</th><th>Owner</th><th>HP</th><th>Staked</th><th>Last Fed</th><th>Actions</th></tr></thead>
+<tbody id="staked-body"></tbody></table>
 
-<!-- MUSEUM -->
 <h2>MUSEUM</h2>
-<table id="museum-table">
-  <thead><tr><th>Token</th><th>Name</th><th>Original Owner</th><th>Caught By</th><th>Reason</th><th>Date</th></tr></thead>
-  <tbody id="museum-body"></tbody>
-</table>
+<table><thead><tr><th>Token</th><th>Name</th><th>Original Owner</th><th>Caught By</th><th>Reason</th><th>Date</th></tr></thead>
+<tbody id="museum-body"></tbody></table>
 
-<!-- MANUAL ACTIONS -->
 <h2>MANUAL ACTIONS</h2>
 <div class="grid">
-  <div class="card">
-    <h3>ADD $MTHY TO USER</h3>
+  <div class="card"><h3>ADD $MTHY TO USER</h3>
     <div class="form-row">
       <div><label>WALLET</label><input id="add-wallet" placeholder="cosmos1..."></div>
       <div><label>AMOUNT</label><input id="add-amount" type="number" value="1000"></div>
     </div>
     <button onclick="addMthy()">ADD $MTHY</button>
   </div>
-  <div class="card">
-    <h3>FORCE CATCH NFT</h3>
+  <div class="card"><h3>FORCE CATCH NFT</h3>
     <div class="form-row">
       <div><label>TOKEN ID</label><input id="catch-token" placeholder="769"></div>
     </div>
@@ -108,31 +124,59 @@ button.danger:hover{background:#ff5252;}
   <button onclick="saveConfig()">SAVE CONFIG</button>
 </div>
 
-<!-- LOG -->
+<div class="card danger" style="margin-top:1rem;border-color:#f44336;">
+  <h3 style="color:#f44336;">⚠️ DANGER ZONE</h3>
+  <p style="font-size:11px;color:#81c784;margin-bottom:8px;">Reset all game data. This cannot be undone.</p>
+  <button class="danger" onclick="resetGame()">RESET ENTIRE GAME</button>
+</div>
+
 <h2>LOG</h2>
 <div class="log" id="log"></div>
+</div>
 
 <script>
 const API = window.location.origin + '/api';
-// Get admin key from URL
-const urlParams = new URLSearchParams(window.location.search);
-const ADMIN_KEY = urlParams.get('key') || '';
-const adminHeaders = { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY };
+let ADMIN_KEY = '';
 
-function log(msg){
-  const el=document.getElementById('log');
-  el.innerText=new Date().toLocaleTimeString()+' — '+msg+'\n'+el.innerText;
+// === LOGIN ===
+function doLogin(){
+  const id = document.getElementById('login-id').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  if(id === 'admin' && pw === 'Manthy)(*'){
+    ADMIN_KEY = 'manthy-admin-2026';
+    try{sessionStorage.setItem('manthy_admin','1');}catch(e){}
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('admin-panel').style.display='block';
+    loadAll();
+  } else {
+    document.getElementById('login-error').style.display='block';
+  }
 }
-function toast(msg){
-  const t=document.getElementById('toast');
-  t.innerText=msg;t.style.display='block';
-  setTimeout(()=>t.style.display='none',3000);
+function doLogout(){
+  try{sessionStorage.removeItem('manthy_admin');}catch(e){}
+  document.getElementById('admin-panel').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-id').value='';
+  document.getElementById('login-pw').value='';
 }
+// Auto-login if session exists
+if(sessionStorage.getItem('manthy_admin')==='1'){
+  ADMIN_KEY='manthy-admin-2026';
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('admin-panel').style.display='block';
+  setTimeout(()=>loadAll(),100);
+}
+// Enter key on password
+document.getElementById('login-pw').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 
+// === HELPERS ===
+function adminH(){return{'Content-Type':'application/json','X-Admin-Key':ADMIN_KEY};}
+function log(msg){const el=document.getElementById('log');el.innerText=new Date().toLocaleTimeString()+' — '+msg+'\n'+el.innerText;}
+function toast(msg){const t=document.getElementById('toast');t.innerText=msg;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+
+// === LOAD DATA ===
 async function loadStats(){
-  try{
-    const r=await fetch(API+'/leaderboard/stats');
-    const d=await r.json();
+  try{const r=await fetch(API+'/leaderboard/stats');const d=await r.json();
     document.getElementById('s-alive').innerText=d.alive;
     document.getElementById('s-weak').innerText=d.weak;
     document.getElementById('s-dead').innerText=d.dead;
@@ -140,112 +184,95 @@ async function loadStats(){
     log('Stats loaded');
   }catch(e){log('Stats error: '+e.message);}
 }
-
 async function loadHealth(){
-  try{
-    const r=await fetch(API+'/health');
-    const d=await r.json();
+  try{const r=await fetch(API+'/health');const d=await r.json();
     document.getElementById('server-status').innerHTML='<span class="badge badge-green">ONLINE</span>';
     document.getElementById('server-info').innerText='Last check: '+d.timestamp;
-  }catch(e){
-    document.getElementById('server-status').innerHTML='<span class="badge badge-red">OFFLINE</span>';
-  }
+  }catch(e){document.getElementById('server-status').innerHTML='<span class="badge badge-red">OFFLINE</span>';}
 }
-
 async function loadUsers(){
-  try{
-    const r=await fetch(API+'/admin/users',{headers:{'X-Admin-Key':ADMIN_KEY}});
-    if(r.status===401){toast('Invalid admin key!');return;}
+  try{const r=await fetch(API+'/admin/users',{headers:{'X-Admin-Key':ADMIN_KEY}});
+    if(r.status===401){toast('Auth failed');return;}
     const d=await r.json();
     document.getElementById('users-body').innerHTML=d.users.map(u=>`<tr>
       <td style="font-size:10px">${u.wallet.slice(0,12)}...${u.wallet.slice(-4)}</td>
       <td>${Math.floor(u.mthy_balance).toLocaleString()}</td>
-      <td>${u.created_at}</td>
-      <td>${u.last_seen}</td>
-    </tr>`).join('');
+      <td>${u.created_at||''}</td><td>${u.last_seen||''}</td></tr>`).join('');
   }catch(e){log('Users: '+e.message);}
 }
-
 async function loadStaked(){
-  try{
-    const r=await fetch(API+'/stake/all?limit=100');
-    const d=await r.json();
+  try{const r=await fetch(API+'/stake/all?limit=100');const d=await r.json();
     document.getElementById('staked-body').innerHTML=d.staked.map(n=>{
-      const hpBadge=n.hp>=100?'badge-green':n.hp>=80?'badge-amber':'badge-red';
-      return `<tr>
-        <td>#${n.token_id}</td>
-        <td>${n.name}</td>
+      const b=n.hp>=100?'badge-green':n.hp>=80?'badge-amber':'badge-red';
+      return `<tr><td>#${n.token_id}</td><td>${n.name}</td>
         <td style="font-size:10px">${n.wallet.slice(0,8)}...${n.wallet.slice(-4)}</td>
-        <td><span class="badge ${hpBadge}">${n.hp}%</span></td>
-        <td>${n.staked_at}</td>
-        <td>${n.last_fed}</td>
-        <td><button class="danger" style="font-size:10px;padding:4px 8px;margin:0" onclick="forceUnstake('${n.wallet}','${n.token_id}')">REMOVE</button></td>
-      </tr>`;
+        <td><span class="badge ${b}">${n.hp}%</span></td>
+        <td>${n.staked_at||''}</td><td>${n.last_fed||''}</td>
+        <td><button class="danger" style="font-size:10px;padding:4px 8px;margin:0" onclick="forceUnstake('${n.wallet}','${n.token_id}')">REMOVE</button></td></tr>`;
     }).join('');
   }catch(e){log('Staked: '+e.message);}
 }
-
 async function loadMuseum(){
-  try{
-    const r=await fetch(API+'/museum?limit=100');
-    const d=await r.json();
+  try{const r=await fetch(API+'/museum?limit=100');const d=await r.json();
     document.getElementById('museum-body').innerHTML=d.exhibits.map(n=>`<tr>
-      <td>#${n.token_id}</td>
-      <td>${n.name}</td>
+      <td>#${n.token_id}</td><td>${n.name}</td>
       <td style="font-size:10px">${(n.original_owner||'').slice(0,8)}...</td>
       <td style="font-size:10px">${(n.caught_by||'').slice(0,8)}...</td>
-      <td>${n.reason}</td>
-      <td>${n.caught_at}</td>
-    </tr>`).join('');
+      <td>${n.reason||''}</td><td>${n.caught_at||''}</td></tr>`).join('');
   }catch(e){log('Museum: '+e.message);}
 }
+async function loadConfig(){
+  try{const r=await fetch(API+'/admin/config',{headers:{'X-Admin-Key':ADMIN_KEY}});const d=await r.json();
+    if(d.config){
+      if(d.config.earn_rate_per_day) document.getElementById('cfg-earn').value=d.config.earn_rate_per_day;
+      if(d.config.feed_cost) document.getElementById('cfg-feed').value=d.config.feed_cost;
+      if(d.config.museum_earn) document.getElementById('cfg-museum').value=d.config.museum_earn;
+      if(d.config.max_survivors) document.getElementById('cfg-survivors').value=d.config.max_survivors;
+    }
+    log('Config loaded');
+  }catch(e){log('Config: '+e.message);}
+}
 
+// === ACTIONS ===
 async function addMthy(){
   const wallet=document.getElementById('add-wallet').value;
   const amount=Number(document.getElementById('add-amount').value);
   if(!wallet||!amount){toast('Fill all fields');return;}
-  try{
-    const r=await fetch(API+'/admin/add-mthy',{method:'POST',headers:adminHeaders,body:JSON.stringify({wallet,amount})});
-    const d=await r.json();
-    toast(d.message||'Done');log('Added '+amount+' $MTHY to '+wallet);
-    loadUsers();
+  try{const r=await fetch(API+'/admin/add-mthy',{method:'POST',headers:adminH(),body:JSON.stringify({wallet,amount})});
+    const d=await r.json();toast(d.message||'Done');log('Added '+amount+' $MTHY to '+wallet);loadUsers();
   }catch(e){toast('Error: '+e.message);}
 }
-
 async function forceCatch(){
   const tokenId=document.getElementById('catch-token').value;
   if(!tokenId){toast('Enter token ID');return;}
-  try{
-    const r=await fetch(API+'/admin/force-catch',{method:'POST',headers:adminHeaders,body:JSON.stringify({tokenId})});
-    const d=await r.json();
-    toast(d.message||'Done');log('Force caught #'+tokenId);
-    loadAll();
+  try{const r=await fetch(API+'/admin/force-catch',{method:'POST',headers:adminH(),body:JSON.stringify({tokenId})});
+    const d=await r.json();toast(d.message||'Done');log('Force caught #'+tokenId);loadAll();
   }catch(e){toast('Error: '+e.message);}
 }
-
 async function forceUnstake(wallet,tokenId){
-  try{
-    const r=await fetch(API+'/stake/unstake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet,tokenId})});
-    const d=await r.json();
-    toast(d.message||'Removed');log('Unstaked #'+tokenId);
-    loadAll();
+  try{const r=await fetch(API+'/stake/unstake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet,tokenId})});
+    const d=await r.json();toast(d.message||'Removed');log('Unstaked #'+tokenId);loadAll();
+  }catch(e){toast('Error: '+e.message);}
+}
+async function saveConfig(){
+  const earn_rate=Number(document.getElementById('cfg-earn').value);
+  const feed_cost=Number(document.getElementById('cfg-feed').value);
+  const museum_earn=Number(document.getElementById('cfg-museum').value);
+  const max_survivors=Number(document.getElementById('cfg-survivors').value);
+  try{const r=await fetch(API+'/admin/config',{method:'POST',headers:adminH(),body:JSON.stringify({earn_rate,feed_cost,museum_earn,max_survivors})});
+    const d=await r.json();toast(d.message||'Saved');log('Config saved');
+  }catch(e){toast('Error: '+e.message);}
+}
+async function resetGame(){
+  if(!confirm('Are you sure? This will DELETE ALL game data!')) return;
+  if(!confirm('REALLY? Type OK to confirm.')) return;
+  try{const r=await fetch(API+'/admin/reset',{method:'POST',headers:adminH(),body:JSON.stringify({confirm:'RESET_GAME'})});
+    const d=await r.json();toast(d.message||'Reset');log('GAME RESET');loadAll();
   }catch(e){toast('Error: '+e.message);}
 }
 
-async function saveConfig(){
-  toast('Config saved (frontend only — server config update coming soon)');
-  log('Config save requested');
-}
-
-function loadAll(){
-  loadHealth();
-  loadStats();
-  loadUsers();
-  loadStaked();
-  loadMuseum();
-}
-loadAll();
-setInterval(loadAll, 30000); // Refresh every 30s
+function loadAll(){loadHealth();loadStats();loadUsers();loadStaked();loadMuseum();loadConfig();}
+setInterval(()=>{if(ADMIN_KEY)loadAll();},30000);
 </script>
 </body>
 </html>

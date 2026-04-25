@@ -46,23 +46,10 @@ function adminAuth(req, res, next) {
   next();
 }
 
-// Block direct access to admin.html without key
-app.get('/admin.html', (req, res) => {
-  const key = req.query.key;
-  if (key !== ADMIN_KEY) {
-    return res.status(401).send('<h1>401 Unauthorized</h1><p>Access denied. Append ?key=YOUR_ADMIN_KEY to the URL.</p>');
-  }
-  res.sendFile(path.join(__dirname, '..', 'admin.html'));
-});
-
+// Admin HTML — served normally (has its own login page)
+// API endpoints still protected by X-Admin-Key header
 app.use(express.static(path.join(__dirname, '..'), {
-  index: 'index.html',
-  // Block admin.html from static serving
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('admin.html')) {
-      res.status(401);
-    }
-  }
+  index: 'index.html'
 }));
 
 // Rate limit: 30 requests per minute for write APIs
@@ -87,7 +74,7 @@ app.get('/api/health', (req, res) => {
 initDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Manthy server on port ${PORT}`);
-    console.log(`Admin panel: /admin.html?key=${ADMIN_KEY}`);
+    console.log(`Admin panel: /admin.html`);
     startCronJobs();
   });
 }).catch(err => {
