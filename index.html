@@ -1213,40 +1213,6 @@ function nftImageHtml(nft, size) {
 }
 
 // Build arena/museum data from collection tokens
-function buildGameData(tokens) {
-  allCollectionNFTs = tokens;
-  arenaData = [];
-  museumData = [];
-  tokens.forEach((t, i) => {
-    const hps = [100,100,80,100,50,100,100,80,50,100,100,80,100,100,50,100,80,100,100,50];
-    const hp = hps[i % hps.length];
-    const ownerAddr = t.owner?.address || '';
-    const ownerShort = ownerAddr ? ownerAddr.slice(0,5)+'...'+ownerAddr.slice(-4) : OWNERS_SHORT[i%OWNERS_SHORT.length];
-    const nft = {
-      id: parseInt(t.tokenId) || (i+1),
-      tokenId: t.tokenId,
-      name: t.name || `Bear #${t.tokenId}`,
-      nick: NICKS[i % NICKS.length],
-      imageUrl: t.imageUrl || '',
-      hp: hp,
-      owner: ownerShort,
-      ownerFull: ownerAddr,
-      days: Math.floor(Math.random()*18)+2,
-      traits: t.traits || []
-    };
-    // Put some in museum for demo
-    if (i >= 60 && hp === 50) {
-      museumData.push({
-        ...nft,
-        reason: ['Forgot to feed 2 days','Caught by another holder','Ran out of $MTHY','Too lazy to feed','Caught at 3am raid'][i%5],
-        day: `Day ${Math.floor(Math.random()*12)+1}`
-      });
-    } else {
-      arenaData.push(nft);
-    }
-  });
-}
-
 // ===== LOAD COLLECTION ON PAGE LOAD =====
 async function loadCollection() {
   toast('Loading data...');
@@ -1327,35 +1293,6 @@ async function loadMuseumFromAPI(page=1) {
     day: n.caught_at ? new Date(n.caught_at+'Z').toLocaleDateString() : 'Unknown'
   }));
   renderMuseum(page);
-}
-
-async function loadCollectionFromStargaze() {
-  toast('Loading from Stargaze...');
-  let allTokens = [];
-  let offset = 0;
-  const limit = 30;
-  const first = await fetchCollectionTokens(limit, 0);
-  allTokens = first.tokens || [];
-  const total = first.pageInfo?.total || allTokens.length;
-  offset = allTokens.length;
-  while (offset < total && offset < 200) {
-    const batch = await fetchCollectionTokens(limit, offset);
-    if (!batch.tokens || batch.tokens.length === 0) break;
-    allTokens = allTokens.concat(batch.tokens);
-    offset += batch.tokens.length;
-  }
-  buildGameData(allTokens);
-  renderArena();
-  renderMuseum();
-  renderLB();
-  document.getElementById('h-alive').innerText = arenaData.length;
-  document.getElementById('h-dead').innerText = museumData.length;
-  document.getElementById('h-danger').innerText = arenaData.filter(n=>n.hp<=80).length;
-  const rsEl=document.getElementById('ranks-standing');
-  if(rsEl) rsEl.innerHTML='<span class="live-dot"></span> '+arenaData.length+' Manthys';
-  const mcEl=document.getElementById('museum-count');
-  if(mcEl) mcEl.innerText=museumData.length+' Exhibits';
-  toast('Loaded ' + allTokens.length + ' NFTs ✅');
 }
 
 // ===== MARQUEE =====
