@@ -41,6 +41,8 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;display:flex;flex-direction:column;}
 .site-footer{margin-top:auto;}
+.mobile-br{display:none;}
+.desktop-br{display:inline;}
 
 /* MARQUEE */
 .marquee-bar{background:rgba(118,255,3,0.08);overflow:hidden;white-space:nowrap;padding:3px 0;border-bottom:1px solid var(--border2);}
@@ -82,7 +84,7 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
 .bal-tooltip::after{content:'';position:absolute;top:100%;right:12px;border:5px solid transparent;border-top-color:var(--gb);}
 
 /* PAGES */
-.page{display:none;padding:2rem;padding-bottom:80px;position:relative;z-index:1;max-width:none;margin:0 auto;}
+.page{display:none;padding:2rem;padding-bottom:80px;position:relative;z-index:1;max-width:none;margin:0 auto;width:100%;}
 .page.active{display:block;}
 
 /* OVERLAY / MODAL */
@@ -143,7 +145,7 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
 @keyframes blobFloat{0%{transform:translate(0,0) scale(1);}25%{transform:translate(30px,-20px) scale(1.1);}50%{transform:translate(-20px,30px) scale(.95);}75%{transform:translate(20px,20px) scale(1.05);}100%{transform:translate(-30px,-10px) scale(1);}}
 
 /* HERO — Banner overlaps title, full viewport */
-.hero-section{position:relative;min-height:auto;display:flex;flex-direction:column;overflow:hidden;}
+.hero-section{position:relative;min-height:auto;display:flex;flex-direction:column;overflow:hidden;width:100%;}
 .hero-banner{position:relative;z-index:2;overflow:hidden;flex:0 0 auto;width:100%;max-width:1000px;margin:0 auto;}
 .hero-banner img{width:100%;height:auto;display:block;animation:heroFloat 6s ease-in-out infinite;}
 /* Banner dust particles */
@@ -152,12 +154,12 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
 .tear-mark{position:absolute;pointer-events:none;z-index:2;overflow:hidden;}
 .tear-fiber{position:absolute;background:rgba(118,255,3,0.15);border-radius:1px;}
 .hero{text-align:center;padding:0 2rem;margin-top:-1.5rem;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;}
-.htitle{font-family:'Inconsolata',monospace;font-size:clamp(22px,4.5vw,52px);font-weight:900;color:transparent;background:linear-gradient(180deg, var(--gb) 0%, rgba(118,255,3,.5) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-stroke:1px rgba(118,255,3,.2);line-height:1.2;margin-bottom:.6rem;letter-spacing:5px;text-shadow:none;white-space:nowrap;filter:drop-shadow(0 2px 20px rgba(0,0,0,.6)) drop-shadow(0 0 30px rgba(118,255,3,.15));}
+.htitle{font-family:'Inconsolata',monospace;font-size:clamp(22px,4.5vw,52px);font-weight:900;color:transparent;background:linear-gradient(180deg, var(--gb) 0%, rgba(118,255,3,.5) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-stroke:1px rgba(118,255,3,.2);line-height:1.15;margin-bottom:.6rem;letter-spacing:5px;text-shadow:none;white-space:nowrap;filter:drop-shadow(0 2px 20px rgba(0,0,0,.6)) drop-shadow(0 0 30px rgba(118,255,3,.15));}
 .hsub{font-family:'VT323',monospace;font-size:22px;color:var(--gn);margin-bottom:1.2rem;letter-spacing:4px;}
 .hbtns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:.5rem;}
 .hbtns .btn-pri,.hbtns .btn-sec{font-size:12px;padding:10px 24px;letter-spacing:1.5px;}
 .hero-ticker{width:100%;flex-shrink:0;margin-top:auto;}
-.home-content{margin:0 auto;padding:1rem 2rem;padding-bottom:80px;}
+.home-content{margin:0 auto;padding:1rem 2rem;padding-bottom:80px;width:100%;}
 
 /* STATS */
 .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:1rem 0;perspective:600px;}
@@ -366,7 +368,7 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
 .stake-stat-val{font-family:'Space Mono',monospace;font-size:28px;font-weight:700;color:var(--gb);display:block;margin-bottom:6px;transition:transform .3s ease;}
 .stake-stat:hover .stake-stat-val{transform:scale(1.1);}
 .stake-stat-label{font-family:'Space Mono',monospace;font-size:11px;color:var(--tm);text-transform:uppercase;letter-spacing:3px;}
-.heatmap-wrap{background:var(--bg2);border:1px solid var(--border2);padding:1.2rem 1.5rem;margin-bottom:1.5rem;overflow:visible;position:relative;}
+.heatmap-wrap{background:var(--bg2);border:1px solid var(--border2);padding:1.2rem 1.5rem;padding-top:3.5rem;margin-bottom:1.5rem;overflow:visible;position:relative;}
 .heatmap-title{font-family:'Space Mono',monospace;font-size:12px;color:var(--tm);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
 .heatmap-title b{color:var(--gb);}
 .heatmap-legend{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--td);}
@@ -384,6 +386,7 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
 .hm-4{background:var(--gb);}
 .hm-red{background:rgba(255,23,68,.3);border-color:rgba(255,23,68,.15);}
 .hm-cell{opacity:0;animation:hmFadeIn .3s ease forwards;}
+.hm-today{border-color:var(--gb) !important;box-shadow:0 0 4px rgba(118,255,3,.4);}
 @keyframes hmFadeIn{to{opacity:1;}}
 .honor-header{background:var(--bg2);border:1px solid var(--border2);padding:1rem 1.5rem;margin-bottom:0;display:flex;align-items:center;justify-content:space-between;}
 .honor-title{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:var(--text);letter-spacing:2px;text-transform:uppercase;}
@@ -570,24 +573,22 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
 
 /* ===== MOBILE HAMBURGER ===== */
 .hamburger{display:none;background:none;border:none;color:var(--gb);font-size:24px;cursor:pointer;padding:8px 16px;line-height:1;font-family:'Space Mono',monospace;z-index:600;position:relative;}
+.nav-mobile{display:none !important;}
 @media(max-width:768px){
   .hamburger{display:flex;align-items:center;margin-left:auto;}
-  .nav-links{
-    position:fixed;top:56px;left:0;right:0;bottom:0;
+  .nav-links{display:none !important;}
+  .nav-mobile{
+    position:fixed;top:50px;left:0;right:0;bottom:0;
     background:rgba(8,14,8,0.98);backdrop-filter:blur(10px);
     flex-direction:column;align-items:stretch;
-    border-left:none;margin-left:0;height:auto;
-    padding:0;z-index:999;
+    padding:0;z-index:99999;
     display:none !important;
     overflow-y:auto;
   }
-  .nav-links.open{display:flex !important;}
-  nav{z-index:1000;}
-  .nb{border-right:none;border-bottom:1px solid var(--border2);padding:14px 20px;font-size:14px;text-align:left;}
-  .bal-box{border-right:none;border-bottom:1px solid var(--border2);padding:14px 20px;justify-content:flex-start;}
-  .wc-btn{border-right:none;border-bottom:1px solid var(--border2);padding:14px 20px;justify-content:flex-start;}
-  .wallet-combined{border-left:none;border-bottom:1px solid var(--border2);padding:14px 20px;flex-direction:row;align-items:center;gap:12px;}
-  .btn-pri#conbtn{margin:12px 20px;text-align:center;display:block;padding:12px 20px;font-size:12px;}
+  .nav-mobile.open{display:flex !important;}
+  nav{z-index:100000;}
+  .nav-mobile .nb{border-right:none;border-bottom:1px solid var(--border2);padding:14px 20px;font-size:14px;text-align:left;}
+  .nav-mobile .btn-pri{margin:12px 20px;text-align:center;display:block;padding:12px 20px;font-size:12px;}
 }
 
 /* ===== COMPREHENSIVE MOBILE ===== */
@@ -606,7 +607,9 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
   /* Home */
   .hero-section{min-height:auto;}
   .hero{margin-top:-1.5rem;padding:0 1rem;}
-  .htitle{font-size:clamp(14px,4.5vw,24px);letter-spacing:1px;white-space:normal;text-align:center;}
+  .htitle{font-size:clamp(28px,10vw,48px);letter-spacing:2px;white-space:normal;text-align:center;}
+  .mobile-br{display:inline;}
+  .desktop-br{display:none;}
   .home-content{padding:1rem;}
   .hsub{font-size:14px;letter-spacing:1px;}
   .hbtns{gap:8px;flex-direction:column;align-items:center;}
@@ -713,7 +716,7 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
   .podium-item .p-emoji{font-size:28px;}
   .podium-item.p-1st .p-emoji{font-size:36px;}
   .p-bar{width:56px;}
-  .htitle{font-size:clamp(13px,4vw,20px);}
+  .htitle{font-size:clamp(22px,9vw,36px);}
   .hsub{font-size:12px;letter-spacing:0.5px;}
   .hero{margin-top:-1rem;}
 }
@@ -786,6 +789,14 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
     <button class="btn-pri" id="conbtn" onclick="openWallet()" style="border:none;">CONNECT WALLET</button>
   </div>
 </nav>
+<div class="nav-mobile" id="nav-links-mobile">
+  <button class="nb" onclick="gatedNav('stake');closeMobileMenu()">Stake</button>
+  <button class="nb" onclick="gatedNav('arena');closeMobileMenu()">Garden</button>
+  <button class="nb" onclick="gatedNav('museum');closeMobileMenu()">Museum</button>
+  <button class="nb" onclick="gatedNav('ranks');closeMobileMenu()">Ranks</button>
+  <button class="nb" onclick="showPage('rules')">Rules</button>
+  <button class="btn-pri" id="conbtn-mobile" onclick="openWallet()" style="border:none;">CONNECT WALLET</button>
+</div>
 
 <!-- HOME -->
 <div id="page-home" class="page active" style="padding:0;max-width:none;">
@@ -794,7 +805,7 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
       <img src="hero.png" alt="MANTHY" id="hero-img">
     </div>
     <div class="hero">
-      <div class="htitle">SURVIVE OR GET CAUGHT</div>
+      <div class="htitle">SURVIVE OR<br class="mobile-br"> GET CAUGHT</div>
       <div class="hsub">// 200 MANTHY RELEASED. ONLY 20 SURVIVE. //</div>
       <div class="hbtns">
         <button class="btn-pri" onclick="gatedNav('stake')">STAKE NFT</button>
@@ -965,7 +976,7 @@ nav{position:sticky;top:0;z-index:500;display:flex;align-items:stretch;justify-c
 <!-- RULES -->
 <div id="page-rules" class="page">
   <div style="font-family:'Inconsolata',monospace;font-size:clamp(22px,3.5vw,38px);font-weight:900;color:var(--text);margin-bottom:16px;letter-spacing:2px;line-height:1.3;text-align:center;text-transform:uppercase">STAKE YOUR MANTHY<br>AND SURVIVE THE GARDEN</div>
-  <div style="font-size:15px;color:var(--tm);margin-bottom:2.5rem;line-height:1.8;max-width:700px;text-align:center;margin-left:auto;margin-right:auto">200 Manthy entered the garden. Feed them daily or they get weak.<br>When they're weak, anyone can catch them. Only 20 will survive.</div>
+  <div style="font-size:15px;color:var(--tm);margin-bottom:2.5rem;line-height:1.8;max-width:700px;text-align:center;margin-left:auto;margin-right:auto">200 Manthy entered the garden.<br class="mobile-br"> Feed them daily or they get weak.<br class="desktop-br"><br class="mobile-br">When they're weak, anyone can catch them.<br class="mobile-br"> Only 20 will survive.</div>
 
   <div class="rules-wrap">
     <div class="rules-grid">
@@ -1478,7 +1489,7 @@ function gatedNav(p){
 
 // ===== MOBILE MENU =====
 function toggleMobileMenu(){
-  const nav=document.getElementById('nav-links');
+  const nav=document.getElementById('nav-links-mobile');
   const btn=document.getElementById('hamburger');
   const isOpen=nav.classList.contains('open');
   if(isOpen){
@@ -1490,7 +1501,7 @@ function toggleMobileMenu(){
   }
 }
 function closeMobileMenu(){
-  const nav=document.getElementById('nav-links');
+  const nav=document.getElementById('nav-links-mobile');
   const btn=document.getElementById('hamburger');
   if(nav)nav.classList.remove('open');
   if(btn)btn.innerText='☰';
@@ -1844,20 +1855,22 @@ function animatePodium(){
 // ===== RENDER STAKE =====
 let stakeFilter='all';
 
-// Generate heatmap — empty by default, will be populated from API feed history
+// Generate heatmap — today at top-left, future dates flow right
 (function(){
   const hm=document.getElementById('heatmap');
   if(!hm)return;
   let h='';
   const today=new Date();
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const totalDays=364;
   let cellIdx=0;
-  for(let i=363;i>=0;i--){
+  for(let i=0;i<totalDays;i++){
     const d=new Date(today);
-    d.setDate(d.getDate()-i);
+    d.setDate(d.getDate()+i);
     const dateStr=months[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
     const delay=(cellIdx*0.003).toFixed(3);
-    h+=`<div class="hm-cell" style="animation-delay:${delay}s"><div class="hm-tip">${dateStr}<br>No feedings</div></div>`;
+    const isToday=i===0?' hm-today':'';
+    h+=`<div class="hm-cell${isToday}" data-date="${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}" style="animation-delay:${delay}s"><div class="hm-tip">${dateStr}<br>No feedings</div></div>`;
     cellIdx++;
   }
   hm.innerHTML=h;

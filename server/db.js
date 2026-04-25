@@ -3,17 +3,23 @@ const fs = require('fs');
 const path = require('path');
 
 const DB_PATH = path.join(__dirname, 'manthy.db');
+const BACKUP_DIR = path.join(__dirname, 'backups');
 let db = null;
 
 async function initDB() {
   const SQL = await initSqlJs();
   
+  // Create backup dir
+  if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  
   // Load existing DB or create new
   if (fs.existsSync(DB_PATH)) {
     const buf = fs.readFileSync(DB_PATH);
     db = new SQL.Database(buf);
+    console.log('[DB] Loaded existing database');
   } else {
     db = new SQL.Database();
+    console.log('[DB] Created new database');
   }
 
   // Create tables
@@ -90,6 +96,30 @@ function saveDB() {
 
 // Auto-save every 30 seconds
 setInterval(() => { if(db) saveDB(); }, 30000);
+
+// Auto-backup every 6 hours (keep last 10 backups)
+setInterval(() => {
+  if (!db) return;
+  try {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(BACKUP_DIR, `manthy-${timestamp}.db`);
+    fs.writeFileSync(backupPath, buffer);
+    
+    // Keep only last 10 backups
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter(f => f.startsWith('manthy-') && f.endsWith('.db'))
+      .sort()
+      .reverse();
+    for (let i = 10; i < files.length; i++) {
+      fs.unlinkSync(path.join(BACKUP_DIR, files[i]));
+    }
+    console.log('[DB] Backup created:', backupPath);
+  } catch (e) {
+    console.error('[DB] Backup failed:', e.message);
+  }
+}, 6 * 60 * 60 * 1000); // 6 hours
 
 // Helper: run query and return changes
 function run(sql, params = []) {

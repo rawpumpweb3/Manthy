@@ -1,6 +1,9 @@
 node_modules/
 server/node_modules/
 server/manthy.db
+server/manthy.db-shm
+server/manthy.db-wal
+server/backups/
 .env
 .env.local
 .vercel

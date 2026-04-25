@@ -6,19 +6,78 @@ const { startCronJobs } = require('./cron');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const ADMIN_KEY = process.env.ADMIN_KEY || 'manthy-admin-2026';
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..')));
 
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/stake', require('./routes/stake'));
-app.use('/api/feed', require('./routes/feed'));
-app.use('/api/catch', require('./routes/catch'));
-app.use('/api/claim', require('./routes/claim'));
-app.use('/api/leaderboard', require('./routes/leaderboard'));
-app.use('/api/museum', require('./routes/museum'));
-app.use('/api/admin', require('./routes/admin'));
+// === RATE LIMITING (simple in-memory) ===
+const rateMap = new Map();
+function rateLimit(maxReqs, windowMs) {
+  return (req, res, next) => {
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const now = Date.now();
+    if (!rateMap.has(ip)) rateMap.set(ip, []);
+    const hits = rateMap.get(ip).filter(t => t > now - windowMs);
+    if (hits.length >= maxReqs) {
+      return res.status(429).json({ error: 'Too many requests. Try again later.' });
+    }
+    hits.push(now);
+    rateMap.set(ip, hits);
+    next();
+  };
+}
+// Clean rate map every 5 min
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, hits] of rateMap) {
+    const valid = hits.filter(t => t > now - 60000);
+    if (valid.length === 0) rateMap.delete(ip);
+    else rateMap.set(ip, valid);
+  }
+}, 300000);
+
+// === ADMIN AUTH MIDDLEWARE ===
+function adminAuth(req, res, next) {
+  const key = req.headers['x-admin-key'] || req.query.key;
+  if (key !== ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized. Invalid admin key.' });
+  }
+  next();
+}
+
+// Block direct access to admin.html without key
+app.get('/admin.html', (req, res) => {
+  const key = req.query.key;
+  if (key !== ADMIN_KEY) {
+    return res.status(401).send('<h1>401 Unauthorized</h1><p>Access denied. Append ?key=YOUR_ADMIN_KEY to the URL.</p>');
+  }
+  res.sendFile(path.join(__dirname, '..', 'admin.html'));
+});
+
+app.use(express.static(path.join(__dirname, '..'), {
+  index: 'index.html',
+  // Block admin.html from static serving
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('admin.html')) {
+      res.status(401);
+    }
+  }
+}));
+
+// Rate limit: 30 requests per minute for write APIs
+const writeLimit = rateLimit(30, 60000);
+// Rate limit: 60 requests per minute for read APIs
+const readLimit = rateLimit(60, 60000);
+
+app.use('/api/auth', readLimit, require('./routes/auth'));
+app.use('/api/stake', writeLimit, require('./routes/stake'));
+app.use('/api/feed', writeLimit, require('./routes/feed'));
+app.use('/api/catch', writeLimit, require('./routes/catch'));
+app.use('/api/claim', writeLimit, require('./routes/claim'));
+app.use('/api/leaderboard', readLimit, require('./routes/leaderboard'));
+app.use('/api/museum', readLimit, require('./routes/museum'));
+app.use('/api/admin', adminAuth, require('./routes/admin'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -28,6 +87,7 @@ app.get('/api/health', (req, res) => {
 initDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Manthy server on port ${PORT}`);
+    console.log(`Admin panel: /admin.html?key=${ADMIN_KEY}`);
     startCronJobs();
   });
 }).catch(err => {

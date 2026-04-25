@@ -114,6 +114,10 @@ button.danger:hover{background:#ff5252;}
 
 <script>
 const API = window.location.origin + '/api';
+// Get admin key from URL
+const urlParams = new URLSearchParams(window.location.search);
+const ADMIN_KEY = urlParams.get('key') || '';
+const adminHeaders = { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY };
 
 function log(msg){
   const el=document.getElementById('log');
@@ -149,9 +153,9 @@ async function loadHealth(){
 }
 
 async function loadUsers(){
-  // No direct users list endpoint yet — we'll add one
   try{
-    const r=await fetch(API+'/admin/users');
+    const r=await fetch(API+'/admin/users',{headers:{'X-Admin-Key':ADMIN_KEY}});
+    if(r.status===401){toast('Invalid admin key!');return;}
     const d=await r.json();
     document.getElementById('users-body').innerHTML=d.users.map(u=>`<tr>
       <td style="font-size:10px">${u.wallet.slice(0,12)}...${u.wallet.slice(-4)}</td>
@@ -201,7 +205,7 @@ async function addMthy(){
   const amount=Number(document.getElementById('add-amount').value);
   if(!wallet||!amount){toast('Fill all fields');return;}
   try{
-    const r=await fetch(API+'/admin/add-mthy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet,amount})});
+    const r=await fetch(API+'/admin/add-mthy',{method:'POST',headers:adminHeaders,body:JSON.stringify({wallet,amount})});
     const d=await r.json();
     toast(d.message||'Done');log('Added '+amount+' $MTHY to '+wallet);
     loadUsers();
@@ -212,7 +216,7 @@ async function forceCatch(){
   const tokenId=document.getElementById('catch-token').value;
   if(!tokenId){toast('Enter token ID');return;}
   try{
-    const r=await fetch(API+'/admin/force-catch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tokenId})});
+    const r=await fetch(API+'/admin/force-catch',{method:'POST',headers:adminHeaders,body:JSON.stringify({tokenId})});
     const d=await r.json();
     toast(d.message||'Done');log('Force caught #'+tokenId);
     loadAll();
